@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="theme-color" content="#00E5FF"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="FitWarrior"/>
+<title>FitWarrior AI</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{background:#08080E;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow-x:hidden;}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
+::-webkit-scrollbar{width:0;height:0;}
+</style>
+<script>
+const manifestData={name:"FitWarrior AI",short_name:"FitWarrior",description:"Train Smart. Eat Right. Level Up Daily.",start_url:"./",display:"standalone",background_color:"#08080E",theme_color:"#00E5FF",orientation:"portrait",icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%2308080E'/%3E%3Cpolygon points='96,20 108,90 96,110 84,90' fill='%2300E5FF'/%3E%3Crect x='68' y='88' width='56' height='12' fill='%23FF4D1A'/%3E%3Crect x='90' y='100' width='12' height='36' fill='%23aaaacc'/%3E%3C/svg%3E",sizes:"192x192",type:"image/svg+xml"}]};
+const blob=new Blob([JSON.stringify(manifestData)],{type:"application/json"});
+const link=document.createElement("link");link.rel="manifest";link.href=URL.createObjectURL(blob);document.head.appendChild(link);
+</script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect}=React;
+const C={bg:"#08080E",card:"#111118",card2:"#181824",border:"#2A2A3A",cyan:"#00E5FF",orange:"#FF4D1A",green:"#00FF88",purple:"#9B59FF",yellow:"#FFD600",text:"#E8E8F0",muted:"#6B6B82"};
+
+// ── LOCAL STORAGE HELPERS ─────────────────────────────────────
+function lsGet(key,def){try{const v=localStorage.getItem("fw_"+key);return v?JSON.parse(v):def;}catch{return def;}}
+function lsSet(key,val){try{localStorage.setItem("fw_"+key,JSON.stringify(val));}catch{}}
+
+// ── DATA ─────────────────────────────────────────────────────
+const MUSCLES={
+  Chest:{icon:"💪",color:C.cyan,exercises:[
+    {name:"Push Up",target:"Pectoralis Major",secondary:"Triceps, Deltoids",difficulty:"Beginner",steps:["Hands shoulder-width, palms flat","Body straight head to heels","Lower chest to floor, elbows 45°","Push back up explosively"],mistakes:["Hip sag","Half reps","Neck forward"]},
+    {name:"Incline Push Up",target:"Upper Chest",secondary:"Front Deltoids",difficulty:"Beginner",steps:["Hands on elevated surface","Body straight","Lower chest to surface","Push back"],mistakes:["Elbows flaring","Core not tight"]},
+    {name:"Decline Push Up",target:"Lower Chest",secondary:"Triceps",difficulty:"Intermediate",steps:["Feet elevated","Hands wider than shoulders","Lower chest","Press back up"],mistakes:["Hips too high","Rushing"]},
+    {name:"Bench Press",target:"Pectoralis Major",secondary:"Triceps, Anterior Deltoid",difficulty:"Intermediate",steps:["Lie on bench, feet flat","Grip wider than shoulders","Lower to mid-chest","Press up"],mistakes:["Bouncing bar","Hips lifting","Uneven grip"]},
+    {name:"Dumbbell Fly",target:"Pectoralis Major",secondary:"Anterior Deltoid",difficulty:"Intermediate",steps:["Dumbbells above chest","Slight elbow bend","Lower arms wide","Squeeze chest back"],mistakes:["Too much elbow bend","Too heavy"]},
+    {name:"Chest Dips",target:"Lower Chest",secondary:"Triceps",difficulty:"Advanced",steps:["Grip bars, lean forward","Lower until arms parallel","Push back up"],mistakes:["Staying upright","Locking elbows"]},
+  ]},
+  Back:{icon:"🏋️",color:"#FF6B9D",exercises:[
+    {name:"Pull Up",target:"Latissimus Dorsi",secondary:"Biceps, Rhomboids",difficulty:"Advanced",steps:["Overhand grip, wider than shoulders","Pull elbows down and back","Chin above bar","Lower controlled"],mistakes:["Kipping","Partial reps","Shrugging"]},
+    {name:"Barbell Row",target:"Latissimus Dorsi",secondary:"Rhomboids, Biceps",difficulty:"Intermediate",steps:["Hinge at hips, back flat","Pull to upper abs","Squeeze blades","Lower controlled"],mistakes:["Rounding back","Using momentum"]},
+    {name:"Deadlift",target:"Posterior Chain",secondary:"Glutes, Hamstrings",difficulty:"Advanced",steps:["Bar over mid-foot","Grip bar, chest up","Push floor away","Stand tall"],mistakes:["Rounding back","Bar swinging","Jerking"]},
+    {name:"Lat Pulldown",target:"Latissimus Dorsi",secondary:"Biceps",difficulty:"Beginner",steps:["Wide grip","Pull to upper chest","Squeeze lats","Return controlled"],mistakes:["Behind neck","Leaning too far"]},
+    {name:"Dumbbell Row",target:"Lats, Rhomboids",secondary:"Rear Deltoid",difficulty:"Beginner",steps:["One knee on bench","Pull to hip","Squeeze top","Lower controlled"],mistakes:["Too much rotation","Arm not back"]},
+  ]},
+  Shoulders:{icon:"🎯",color:C.yellow,exercises:[
+    {name:"Overhead Press",target:"Deltoids",secondary:"Triceps, Traps",difficulty:"Intermediate",steps:["Bar at shoulders","Press overhead","Fully extend","Lower controlled"],mistakes:["Arching back","Wrong bar path"]},
+    {name:"Lateral Raise",target:"Medial Deltoid",secondary:"Supraspinatus",difficulty:"Beginner",steps:["Dumbbells at sides","Raise to shoulder height","Slight elbow bend","Lower slowly"],mistakes:["Swinging","Raising too high"]},
+    {name:"Front Raise",target:"Anterior Deltoid",secondary:"Upper Chest",difficulty:"Beginner",steps:["Dumbbells front of thighs","Raise to shoulder","Control descent","Alternate"],mistakes:["Swinging torso","Too heavy"]},
+    {name:"Arnold Press",target:"All Deltoid Heads",secondary:"Triceps",difficulty:"Intermediate",steps:["Dumbbells at chin palms in","Press rotating palms out","Fully extend","Reverse on way down"],mistakes:["Too fast","Too heavy"]},
+  ]},
+  Biceps:{icon:"💥",color:C.purple,exercises:[
+    {name:"Dumbbell Curl",target:"Biceps Brachii",secondary:"Brachialis",difficulty:"Beginner",steps:["Palms forward","Curl up elbows pinned","Squeeze top","Lower slow"],mistakes:["Swinging elbows","Partial range"]},
+    {name:"Hammer Curl",target:"Brachialis",secondary:"Biceps",difficulty:"Beginner",steps:["Palms facing each other","Curl neutral grip","Squeeze top","Lower controlled"],mistakes:["Twisting wrist","Too heavy"]},
+    {name:"Concentration Curl",target:"Biceps Peak",secondary:"Brachialis",difficulty:"Beginner",steps:["Elbow on inner thigh","Curl to shoulder","Squeeze hard","Lower fully"],mistakes:["Elbow lifting","Rushing"]},
+    {name:"Barbell Curl",target:"Biceps Brachii",secondary:"Forearms",difficulty:"Beginner",steps:["Underhand grip","Curl up elbows still","Squeeze top","Lower 3 seconds"],mistakes:["Swinging body","Not lowering fully"]},
+  ]},
+  Triceps:{icon:"⚡",color:C.orange,exercises:[
+    {name:"Rope Pushdown",target:"Triceps",secondary:"Anconeus",difficulty:"Beginner",steps:["Rope at chest height","Elbows at sides","Push down spread rope","Return controlled"],mistakes:["Elbows flaring","Leaning forward"]},
+    {name:"Skull Crusher",target:"Triceps Long Head",secondary:"All Heads",difficulty:"Intermediate",steps:["Bar above chest","Lower to forehead elbows only","Upper arms vertical","Extend back"],mistakes:["Flaring elbows","Moving upper arms"]},
+    {name:"Overhead Extension",target:"Triceps Long Head",secondary:"Lateral Head",difficulty:"Beginner",steps:["Dumbbell overhead","Lower behind head","Elbows forward","Extend back"],mistakes:["Elbows flaring","Arching back"]},
+    {name:"Tricep Dips",target:"Triceps",secondary:"Chest",difficulty:"Intermediate",steps:["Hands on bench","Lower bending elbows","Arms parallel","Push back"],mistakes:["Elbows flaring","Partial range"]},
+  ]},
+  "Abs & Core":{icon:"🔥",color:C.green,exercises:[
+    {name:"Plank",target:"Transverse Abdominis",secondary:"Obliques, Glutes",difficulty:"Beginner",steps:["Forearms down elbows under shoulders","Body straight","Engage core","Hold breathe"],mistakes:["Hips wrong height","Holding breath","Head drooping"]},
+    {name:"Leg Raise",target:"Lower Abs",secondary:"Hip Flexors",difficulty:"Intermediate",steps:["Hands under glutes","Raise to 90°","Lower slow no touch","Repeat"],mistakes:["Swinging","Arching back"]},
+    {name:"Crunch",target:"Rectus Abdominis",secondary:"Obliques",difficulty:"Beginner",steps:["Knees bent","Lift shoulders exhale","Lower controlled"],mistakes:["Pulling neck","Momentum"]},
+    {name:"Mountain Climber",target:"Core, Hip Flexors",secondary:"Shoulders",difficulty:"Intermediate",steps:["Plank arms straight","Drive knee to chest","Switch fast","Hips level"],mistakes:["Hips bouncing","Too slow"]},
+    {name:"Russian Twist",target:"Obliques",secondary:"Rectus Abdominis",difficulty:"Beginner",steps:["Lean back 45°","Clasp hands","Rotate side to side","Touch floor each rep"],mistakes:["Only arms","Rounding back"]},
+  ]},
+  Legs:{icon:"🦵",color:"#FF6B9D",exercises:[
+    {name:"Squat",target:"Quadriceps",secondary:"Glutes, Hamstrings",difficulty:"Beginner",steps:["Feet shoulder-width toes out","Chest up core tight","Lower thighs parallel","Drive through heels"],mistakes:["Knees caving","Heels rising","Rounding back"]},
+    {name:"Romanian Deadlift",target:"Hamstrings",secondary:"Glutes, Lower Back",difficulty:"Intermediate",steps:["Slight knee bend","Hinge hips back","Lower along legs flat back","Drive hips forward"],mistakes:["Too much knee bend","Rounding back"]},
+    {name:"Lunges",target:"Quadriceps",secondary:"Glutes, Hamstrings",difficulty:"Beginner",steps:["Step forward","Lower back knee","Front thigh parallel","Push back"],mistakes:["Knee past toes","Torso leaning"]},
+    {name:"Calf Raises",target:"Gastrocnemius",secondary:"Soleus",difficulty:"Beginner",steps:["Stand on step","Rise onto toes","Hold 1 second","Lower below neutral"],mistakes:["Too fast","Partial range"]},
+  ]},
+  Glutes:{icon:"🍑",color:C.purple,exercises:[
+    {name:"Hip Thrust",target:"Gluteus Maximus",secondary:"Hamstrings",difficulty:"Beginner",steps:["Upper back on bench","Feet flat knees bent","Drive hips up","Squeeze top lower"],mistakes:["Not fully extending","Hyperextending back"]},
+    {name:"Glute Bridge",target:"Gluteus Maximus",secondary:"Core",difficulty:"Beginner",steps:["Lie back knees bent","Drive hips up squeeze","Hold 1-2 sec","Lower controlled"],mistakes:["Pushing through toes","Not squeezing"]},
+    {name:"Bulgarian Split Squat",target:"Glutes, Quads",secondary:"Hamstrings",difficulty:"Advanced",steps:["Rear foot on bench","Lower back knee","Drive through front heel"],mistakes:["Leaning forward","Knee caving"]},
+  ]},
+};
+
+const SCHEDULE=[
+  {day:"Mon",focus:"Chest + Core",workouts:[{muscle:"Chest",exercises:[{name:"Push Up",sets:4,reps:15},{name:"Incline Push Up",sets:4,reps:12},{name:"Bench Press",sets:4,reps:10},{name:"Dumbbell Fly",sets:3,reps:12}]},{muscle:"Core",exercises:[{name:"Plank",sets:3,reps:"60s"},{name:"Leg Raise",sets:3,reps:15},{name:"Crunch",sets:3,reps:20}]}]},
+  {day:"Tue",focus:"Back + Biceps",workouts:[{muscle:"Back",exercises:[{name:"Pull Up",sets:4,reps:8},{name:"Barbell Row",sets:4,reps:10},{name:"Lat Pulldown",sets:3,reps:12}]},{muscle:"Biceps",exercises:[{name:"Dumbbell Curl",sets:3,reps:12},{name:"Hammer Curl",sets:3,reps:10},{name:"Concentration Curl",sets:2,reps:12}]}]},
+  {day:"Wed",focus:"Legs 🦵",workouts:[{muscle:"Legs",exercises:[{name:"Squat",sets:4,reps:12},{name:"Romanian Deadlift",sets:3,reps:10},{name:"Lunges",sets:3,reps:12},{name:"Calf Raises",sets:4,reps:20}]},{muscle:"Glutes",exercises:[{name:"Hip Thrust",sets:4,reps:15},{name:"Glute Bridge",sets:3,reps:20}]}]},
+  {day:"Thu",focus:"Shoulders + Triceps",workouts:[{muscle:"Shoulders",exercises:[{name:"Overhead Press",sets:4,reps:10},{name:"Lateral Raise",sets:3,reps:15},{name:"Arnold Press",sets:3,reps:12}]},{muscle:"Triceps",exercises:[{name:"Rope Pushdown",sets:3,reps:15},{name:"Skull Crusher",sets:3,reps:10},{name:"Overhead Extension",sets:3,reps:12}]}]},
+  {day:"Fri",focus:"Chest + Back",workouts:[{muscle:"Chest",exercises:[{name:"Bench Press",sets:4,reps:10},{name:"Decline Push Up",sets:3,reps:12},{name:"Chest Dips",sets:3,reps:10}]},{muscle:"Back",exercises:[{name:"Deadlift",sets:3,reps:5},{name:"Barbell Row",sets:3,reps:10},{name:"Pull Up",sets:3,reps:8}]}]},
+  {day:"Sat",focus:"Arms + Abs",workouts:[{muscle:"Biceps",exercises:[{name:"Barbell Curl",sets:4,reps:12},{name:"Hammer Curl",sets:3,reps:10}]},{muscle:"Triceps",exercises:[{name:"Skull Crusher",sets:3,reps:12},{name:"Rope Pushdown",sets:3,reps:15}]},{muscle:"Abs",exercises:[{name:"Plank",sets:3,reps:"60s"},{name:"Leg Raise",sets:3,reps:15},{name:"Russian Twist",sets:3,reps:20}]}]},
+  {day:"Sun",focus:"Recovery 🧘",workouts:[]},
+];
+
+const DIET=[
+  {meal:"Morning",time:"6:30 AM",icon:"🌅",items:["Jeera + Saunf Water"],cal:0,protein:0,tag:"Digestion"},
+  {meal:"Pre Workout",time:"7:30 AM",icon:"⚡",items:["2 Banana","10 Peanuts"],cal:250,protein:7,tag:"Energy"},
+  {meal:"Post Workout",time:"9:30 AM",icon:"🥛",items:["500ml Milk","50g Oats","30g Peanut Butter"],cal:550,protein:22,tag:"Recovery"},
+  {meal:"Breakfast",time:"10:30 AM",icon:"🍽️",items:["100g Soya Chunks","4 Roti","Salad"],cal:600,protein:35,tag:"Muscle"},
+  {meal:"Lunch",time:"1:30 PM",icon:"🫘",items:["3 Roti","Dal","Rice","Vegetables"],cal:550,protein:18,tag:"Fuel"},
+  {meal:"Evening",time:"5:00 PM",icon:"🌿",items:["Roasted Chana","Peanuts","Milk"],cal:350,protein:18,tag:"Snack"},
+  {meal:"Dinner",time:"8:00 PM",icon:"🥘",items:["4 Roti","Dal","Paneer/Soya","Vegetables"],cal:500,protein:25,tag:"Build"},
+  {meal:"Before Sleep",time:"10:30 PM",icon:"🌙",items:["300ml Milk"],cal:180,protein:10,tag:"Recovery"},
+];
+
+const STREAKS=[{label:"Bronze",days:1,icon:"🥉",color:"#CD7F32"},{label:"Silver",days:7,icon:"🥈",color:"#C0C0C0"},{label:"Gold",days:30,icon:"🥇",color:C.yellow},{label:"Diamond",days:90,icon:"💎",color:C.cyan},{label:"Warrior",days:365,icon:"⚔️",color:C.orange}];
+function getRank(s){if(s>=23)return{rank:"S",label:"Excellent",color:C.cyan};if(s>=20)return{rank:"A",label:"Very Good",color:C.green};if(s>=15)return{rank:"B",label:"Good",color:C.yellow};if(s>=10)return{rank:"C",label:"Needs Improvement",color:C.orange};return{rank:"D",label:"Poor",color:"#FF4444"};}
+function todayKey(){return new Date().toISOString().slice(0,10);}
+
+// ── MUSCLE MODEL ─────────────────────────────────────────────
+function MuscleModel({mn}){
+  const map={Chest:{color:C.cyan,d:"M155,140 Q180,128 205,140 L210,185 Q180,192 150,185 Z"},Back:{color:"#FF6B9D",d:"M155,140 Q180,128 205,140 L210,200 Q180,208 150,200 Z"},Shoulders:{color:C.yellow,d:"M115,118 Q138,108 158,120 L160,148 Q137,158 113,148 Z M202,120 Q222,108 245,118 L247,148 Q223,158 200,148 Z"},Biceps:{color:C.purple,d:"M108,152 Q128,144 140,152 L142,190 Q126,195 106,190 Z M220,152 Q232,144 252,152 L254,190 Q236,195 218,190 Z"},Triceps:{color:C.orange,d:"M108,158 Q128,150 140,158 L142,198 Q126,203 106,198 Z M220,158 Q232,150 252,158 L254,198 Q236,203 218,198 Z"},"Abs & Core":{color:C.green,d:"M162,188 Q180,182 198,188 L200,232 Q180,238 160,232 Z"},Legs:{color:"#FF6B9D",d:"M148,232 Q165,228 178,232 L180,298 Q163,303 146,298 Z M182,232 Q196,228 210,232 L212,298 Q196,303 180,298 Z"},Glutes:{color:C.purple,d:"M150,220 Q180,213 210,220 L212,242 Q180,250 148,242 Z"}};
+  const a=map[mn];
+  return(<svg viewBox="88 75 184 265" style={{width:"100%",height:"200px"}}>
+    <ellipse cx="180" cy="102" rx="22" ry="25" fill="#1a1a28" stroke={C.border} strokeWidth="1.5"/>
+    <path d="M148,123 Q180,113 212,123 L218,228 Q180,236 142,228 Z" fill="#1a1a28" stroke={C.border} strokeWidth="1.5"/>
+    <rect x="106" y="123" width="34" height="96" rx="14" fill="#1a1a28" stroke={C.border} strokeWidth="1.5"/>
+    <rect x="220" y="123" width="34" height="96" rx="14" fill="#1a1a28" stroke={C.border} strokeWidth="1.5"/>
+    <rect x="144" y="226" width="34" height="96" rx="14" fill="#1a1a28" stroke={C.border} strokeWidth="1.5"/>
+    <rect x="182" y="226" width="34" height="96" rx="14" fill="#1a1a28" stroke={C.border} strokeWidth="1.5"/>
+    <line x1="180" y1="123" x2="180" y2="226" stroke={C.border} strokeWidth="1" opacity="0.3"/>
+    {a&&<path d={a.d} fill={a.color} opacity="0.88" style={{filter:`drop-shadow(0 0 10px ${a.color})`}}><animate attributeName="opacity" values="0.6;1;0.6" dur="1.8s" repeatCount="indefinite"/></path>}
+  </svg>);
+}
+
+// ── TAB 1: LIBRARY ───────────────────────────────────────────
+function ExDetail({ex,mn,onBack}){
+  const[step,setStep]=useState(0);const[showM,setShowM]=useState(false);
+  const dc={Beginner:C.green,Intermediate:C.yellow,Advanced:C.orange};
+  return(<div style={{padding:"16px"}}>
+    <button onClick={onBack} style={{background:"none",border:`1px solid ${C.border}`,color:C.muted,padding:"8px 16px",borderRadius:"8px",cursor:"pointer",marginBottom:"16px",fontSize:"13px"}}>← Back</button>
+    <div style={{background:C.card,borderRadius:"16px",padding:"20px",marginBottom:"12px",border:`1px solid ${C.border}`}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"6px"}}>
+        <h2 style={{color:C.text,fontSize:"20px",fontWeight:800,margin:0}}>{ex.name}</h2>
+        <span style={{background:dc[ex.difficulty]+"22",color:dc[ex.difficulty],padding:"4px 10px",borderRadius:"20px",fontSize:"11px",fontWeight:700}}>{ex.difficulty}</span>
+      </div>
+      <p style={{color:C.cyan,fontSize:"13px",margin:"4px 0"}}>🎯 {ex.target}</p>
+      <p style={{color:C.muted,fontSize:"12px",margin:0}}>+ {ex.secondary}</p>
+    </div>
+    <MuscleModel mn={mn}/>
+    <div style={{background:C.card,borderRadius:"16px",padding:"20px",marginBottom:"12px",border:`1px solid ${C.border}`}}>
+      <h3 style={{color:C.text,fontSize:"15px",fontWeight:700,marginBottom:"14px"}}>📋 Instructions</h3>
+      {ex.steps.map((s,i)=>(<div key={i} onClick={()=>setStep(i)} style={{display:"flex",gap:"12px",padding:"12px",borderRadius:"10px",marginBottom:"8px",cursor:"pointer",background:step===i?C.cyan+"18":"transparent",border:`1px solid ${step===i?C.cyan+"44":"transparent"}`}}>
+        <span style={{background:step===i?C.cyan:C.border,color:step===i?C.bg:C.muted,borderRadius:"50%",width:"24px",height:"24px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"12px",fontWeight:700,flexShrink:0}}>{i+1}</span>
+        <span style={{color:step===i?C.text:C.muted,fontSize:"14px",lineHeight:1.5}}>{s}</span>
+      </div>))}
+    </div>
+    <div style={{background:C.card,borderRadius:"16px",padding:"20px",border:`1px solid ${C.orange}44`}}>
+      <div onClick={()=>setShowM(!showM)} style={{display:"flex",justifyContent:"space-between",cursor:"pointer"}}>
+        <h3 style={{color:C.orange,fontSize:"15px",fontWeight:700,margin:0}}>⚠️ Common Mistakes</h3>
+        <span style={{color:C.muted}}>{showM?"▲":"▼"}</span>
+      </div>
+      {showM&&ex.mistakes.map((m,i)=>(<div key={i} style={{display:"flex",gap:"8px",marginTop:"10px"}}><span style={{color:C.orange}}>✗</span><span style={{color:C.muted,fontSize:"14px"}}>{m}</span></div>))}
+    </div>
+  </div>);
+}
+
+function Tab1(){
+  const[sm,setSm]=useState(null);const[se,setSe]=useState(null);
+  if(se)return<ExDetail ex={se} mn={sm} onBack={()=>setSe(null)}/>;
+  return(<div style={{padding:"16px"}}>
+    <h1 style={{color:C.text,fontSize:"24px",fontWeight:900,marginBottom:"4px"}}>Exercise Library</h1>
+    <p style={{color:C.muted,fontSize:"13px",marginBottom:"20px"}}>Muscle group select karo</p>
+    {!sm?(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px"}}>
+      {Object.entries(MUSCLES).map(([n,d])=>(<div key={n} onClick={()=>setSm(n)} style={{background:C.card,borderRadius:"14px",padding:"18px 16px",cursor:"pointer",border:`1px solid ${d.color}33`}}>
+        <div style={{fontSize:"28px",marginBottom:"8px"}}>{d.icon}</div>
+        <div style={{color:d.color,fontSize:"15px",fontWeight:700}}>{n}</div>
+        <div style={{color:C.muted,fontSize:"12px",marginTop:"2px"}}>{d.exercises.length} exercises</div>
+      </div>))}
+    </div>):(<div>
+      <button onClick={()=>setSm(null)} style={{background:"none",border:`1px solid ${C.border}`,color:C.muted,padding:"8px 16px",borderRadius:"8px",cursor:"pointer",marginBottom:"16px",fontSize:"13px"}}>← All Muscles</button>
+      <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"16px"}}>
+        <span style={{fontSize:"28px"}}>{MUSCLES[sm].icon}</span>
+        <h2 style={{color:MUSCLES[sm].color,fontSize:"20px",fontWeight:800,margin:0}}>{sm}</h2>
+      </div>
+      {MUSCLES[sm].exercises.map((ex,i)=>(<div key={i} onClick={()=>setSe(ex)} style={{background:C.card,borderRadius:"12px",padding:"16px",marginBottom:"10px",cursor:"pointer",border:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div><div style={{color:C.text,fontSize:"15px",fontWeight:700}}>{ex.name}</div><div style={{color:C.muted,fontSize:"12px",marginTop:"3px"}}>🎯 {ex.target}</div></div>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:"4px"}}>
+          <span style={{background:MUSCLES[sm].color+"22",color:MUSCLES[sm].color,padding:"3px 8px",borderRadius:"12px",fontSize:"11px",fontWeight:700}}>{ex.difficulty}</span>
+          <span style={{color:C.muted,fontSize:"20px"}}>›</span>
+        </div>
+      </div>))}
+    </div>)}
+  </div>);
+}
+
+// ── TAB 2: WORKOUT (with localStorage) ──────────────────────
+function Tab2(){
+  const today=new Date().getDay();
+  const ti=today===0?6:today-1;
+  const[ad,setAd]=useState(ti);
+  const tk=todayKey();
+
+  // Load saved data
+  const[done,setDone]=useState(()=>lsGet(`workout_sets_${tk}`,{}));
+  const[wts,setWts]=useState(()=>lsGet(`workout_weights_${tk}`,{}));
+  const[history]=useState(()=>lsGet("workout_history",{}));
+
+  const dd=SCHEDULE[ad];
+  const allEx=dd.workouts.flatMap(w=>w.exercises);
+  const total=allEx.reduce((a,e)=>a+e.sets,0);
+  const doneN=Object.values(done).filter(Boolean).length;
+  const pct=total>0?Math.round((doneN/total)*100):0;
+
+  function toggleSet(k){
+    const nd={...done,[k]:!done[k]};
+    setDone(nd);
+    lsSet(`workout_sets_${tk}`,nd);
+    // Save to history
+    const hist=lsGet("workout_history",{});
+    hist[tk]={day:dd.day,focus:dd.focus,pct:Math.round((Object.values(nd).filter(Boolean).length/total)*100),ts:Date.now()};
+    lsSet("workout_history",hist);
+    // Update streak
+    updateStreak();
+  }
+
+  function updateWt(k,v){
+    const nw={...wts,[k]:v};setWts(nw);lsSet(`workout_weights_${tk}`,nw);
+  }
+
+  function updateStreak(){
+    const hist=lsGet("workout_history",{});
+    const dates=Object.keys(hist).sort().reverse();
+    let streak=0;
+    const today2=new Date();
+    for(let i=0;i<365;i++){
+      const d=new Date(today2);d.setDate(d.getDate()-i);
+      const k=d.toISOString().slice(0,10);
+      if(hist[k]&&hist[k].pct>=60)streak++;
+      else if(i>0)break;
+    }
+    lsSet("streak",streak);
+  }
+
+  return(<div style={{padding:"16px"}}>
+    <h1 style={{color:C.text,fontSize:"24px",fontWeight:900,marginBottom:"16px"}}>Workout Plan</h1>
+    <div style={{display:"flex",gap:"8px",marginBottom:"20px",overflowX:"auto",paddingBottom:"4px"}}>
+      {SCHEDULE.map((d,i)=>(<button key={i} onClick={()=>setAd(i)} style={{background:ad===i?C.cyan:C.card,color:ad===i?C.bg:C.muted,border:`1px solid ${ad===i?C.cyan:C.border}`,borderRadius:"10px",padding:"8px 14px",cursor:"pointer",whiteSpace:"nowrap",fontWeight:ad===i?800:500,fontSize:"13px"}}>{d.day}</button>))}
+    </div>
+    <div style={{background:C.card,borderRadius:"14px",padding:"16px",marginBottom:"16px",border:`1px solid ${C.border}`}}>
+      <h2 style={{color:C.text,fontSize:"18px",fontWeight:800,margin:"0 0 4px 0"}}>{dd.day} — {dd.focus}</h2>
+      {total>0&&(<div style={{marginTop:"12px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:"6px"}}>
+          <span style={{color:C.muted,fontSize:"12px"}}>Progress</span>
+          <span style={{color:pct===100?C.green:C.cyan,fontSize:"12px",fontWeight:700}}>{pct}% {pct===100?"✓ Done!":""}</span>
+        </div>
+        <div style={{background:C.border,borderRadius:"4px",height:"6px"}}><div style={{background:pct===100?C.green:C.cyan,height:"100%",borderRadius:"4px",width:`${pct}%`,transition:"width 0.3s"}}/></div>
+      </div>)}
+    </div>
+    {dd.workouts.length===0?(<div style={{textAlign:"center",padding:"48px 24px"}}>
+      <div style={{fontSize:"56px",marginBottom:"12px"}}>🧘</div>
+      <div style={{color:C.text,fontSize:"18px",fontWeight:700}}>Recovery Day</div>
+      <div style={{color:C.muted,fontSize:"14px",marginTop:"8px"}}>Rest, stretch, rebuild. You earned it! 💪</div>
+    </div>):dd.workouts.map((g,gi)=>(<div key={gi} style={{marginBottom:"20px"}}>
+      <h3 style={{color:C.cyan,fontSize:"13px",fontWeight:700,marginBottom:"10px",textTransform:"uppercase",letterSpacing:"1px"}}>— {g.muscle} —</h3>
+      {g.exercises.map((ex,ei)=>(<div key={ei} style={{background:C.card,borderRadius:"12px",padding:"16px",marginBottom:"10px",border:`1px solid ${C.border}`}}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:"12px"}}>
+          <div><div style={{color:C.text,fontSize:"15px",fontWeight:700}}>{ex.name}</div><div style={{color:C.muted,fontSize:"12px"}}>{ex.sets} Sets × {ex.reps}</div></div>
+          <input type="number" placeholder="kg" value={wts[`${gi}_${ei}`]||""} onChange={e=>updateWt(`${gi}_${ei}`,e.target.value)}
+            style={{background:C.card2,border:`1px solid ${C.border}`,color:C.text,borderRadius:"8px",padding:"6px 8px",width:"60px",fontSize:"14px",textAlign:"center"}}/>
+        </div>
+        <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
+          {Array.from({length:ex.sets}).map((_,si)=>{
+            const k=`${gi}_${ei}_${si}`;const isDone=done[k];
+            return(<button key={si} onClick={()=>toggleSet(k)} style={{background:isDone?C.green:C.card2,color:isDone?C.bg:C.muted,border:`1px solid ${isDone?C.green:C.border}`,borderRadius:"8px",padding:"7px 14px",cursor:"pointer",fontSize:"13px",fontWeight:700}}>
+              {isDone?"✓ ":""}S{si+1}
+            </button>);
+          })}
+        </div>
+      </div>))}
+    </div>))}
+  </div>);
+}
+
+// ── TAB 3: STATS (with localStorage) ────────────────────────
+function Tab3(){
+  const streak=lsGet("streak",0);
+  const history=lsGet("workout_history",{});
+  const dates=Object.keys(history).sort().reverse();
+  const thisMonth=dates.filter(d=>d.startsWith(new Date().toISOString().slice(0,7)));
+  const totalW=thisMonth.length;
+  const missedDays=new Date().getDate()-totalW;
+  const avgScore=thisMonth.length>0?Math.round(thisMonth.reduce((a,d)=>a+(history[d].pct/100*10),0)/thisMonth.length*2.5):0;
+
+  // Last 7 days for chart
+  const last7=Array.from({length:7}).map((_,i)=>{
+    const d=new Date();d.setDate(d.getDate()-(6-i));
+    const k=d.toISOString().slice(0,10);
+    return{day:["S","M","T","W","T","F","S"][d.getDay()],score:history[k]?Math.round(history[k].pct/100*25):0,isToday:i===6};
+  });
+
+  const todayScore=last7[6].score;
+  const{rank,label,color}=getRank(todayScore);
+  const st=STREAKS.slice().reverse().find(s=>streak>=s.days)||STREAKS[0];
+
+  return(<div style={{padding:"16px"}}>
+    <h1 style={{color:C.text,fontSize:"24px",fontWeight:900,marginBottom:"20px"}}>Performance</h1>
+    <div style={{background:`linear-gradient(135deg,${color}18,${C.card})`,borderRadius:"20px",padding:"24px",marginBottom:"16px",border:`1px solid ${color}44`,textAlign:"center"}}>
+      <div style={{fontSize:"72px",fontWeight:900,color,lineHeight:1,textShadow:`0 0 40px ${color}66`}}>{rank}</div>
+      <div style={{color:C.muted,fontSize:"12px",fontWeight:600,letterSpacing:"2px",textTransform:"uppercase",marginTop:"2px"}}>RANK</div>
+      <div style={{color:C.text,fontSize:"18px",fontWeight:700,marginTop:"8px"}}>{label}</div>
+      <div style={{color:C.muted,fontSize:"14px",marginTop:"4px"}}>{todayScore} / 25 Points Today</div>
+    </div>
+
+    {/* Weekly chart - REAL DATA */}
+    <div style={{background:C.card,borderRadius:"16px",padding:"16px",marginBottom:"16px",border:`1px solid ${C.border}`}}>
+      <h3 style={{color:C.text,fontSize:"15px",fontWeight:700,marginBottom:"16px"}}>📈 Last 7 Days (Real Data)</h3>
+      <div style={{display:"flex",alignItems:"flex-end",gap:"6px",height:"100px"}}>
+        {last7.map((v,i)=>(<div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:"4px"}}>
+          <span style={{color:C.muted,fontSize:"10px"}}>{v.score||""}</span>
+          <div style={{width:"100%",background:v.isToday?C.cyan:v.score>0?C.cyan+"66":C.border,borderRadius:"4px 4px 0 0",height:`${Math.max((v.score/25)*80,4)}px`}}/>
+          <span style={{color:v.isToday?C.cyan:C.muted,fontSize:"11px",fontWeight:v.isToday?700:400}}>{v.day}</span>
+        </div>))}
+      </div>
+    </div>
+
+    {/* Streak - REAL */}
+    <div style={{background:C.card,borderRadius:"16px",padding:"16px",marginBottom:"16px",border:`1px solid ${st.color}44`}}>
+      <h3 style={{color:C.text,fontSize:"15px",fontWeight:700,marginBottom:"12px"}}>🔥 Current Streak</h3>
+      <div style={{display:"flex",alignItems:"center",gap:"12px",marginBottom:"14px"}}>
+        <span style={{fontSize:"38px"}}>{st.icon}</span>
+        <div>
+          <div style={{color:st.color,fontSize:"26px",fontWeight:900}}>{streak} Days</div>
+          <div style={{color:C.muted,fontSize:"13px"}}>{st.label} Streak</div>
+        </div>
+      </div>
+      <div style={{display:"flex",gap:"6px"}}>
+        {STREAKS.map((s,i)=>(<div key={i} style={{flex:1,textAlign:"center",opacity:streak>=s.days?1:0.3}}>
+          <div style={{fontSize:"20px"}}>{s.icon}</div>
+          <div style={{color:s.color,fontSize:"10px",fontWeight:700,marginTop:"2px"}}>{s.days}d</div>
+        </div>))}
+      </div>
+    </div>
+
+    {/* Monthly - REAL */}
+    <div style={{background:C.card,borderRadius:"16px",padding:"16px",marginBottom:"16px",border:`1px solid ${C.border}`}}>
+      <h3 style={{color:C.text,fontSize:"15px",fontWeight:700,marginBottom:"12px"}}>📅 This Month (Real)</h3>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"10px"}}>
+        {[{label:"Workouts",v:totalW,i:"💪"},{label:"Missed",v:Math.max(0,missedDays),i:"❌"},{label:"Avg Score",v:avgScore,i:"⭐"},{label:"Streak",v:`${streak}d`,i:"🔥"},{label:"Best Rank",v:totalW>0?"A":"—",i:"🏆"},{label:"Days Done",v:`${totalW}/${new Date().getDate()}`,i:"📊"}].map((s,i)=>(<div key={i} style={{background:C.card2,borderRadius:"10px",padding:"12px 8px",textAlign:"center"}}>
+          <div style={{fontSize:"20px",marginBottom:"4px"}}>{s.i}</div>
+          <div style={{color:C.text,fontSize:"13px",fontWeight:700}}>{s.v}</div>
+          <div style={{color:C.muted,fontSize:"10px",marginTop:"2px"}}>{s.label}</div>
+        </div>))}
+      </div>
+    </div>
+
+    {/* Workout History */}
+    {dates.length>0&&(<div style={{background:C.card,borderRadius:"16px",padding:"16px",border:`1px solid ${C.border}`}}>
+      <h3 style={{color:C.text,fontSize:"15px",fontWeight:700,marginBottom:"12px"}}>📋 Recent Workouts</h3>
+      {dates.slice(0,7).map((d,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:i<6?`1px solid ${C.border}`:"none"}}>
+        <div>
+          <div style={{color:C.text,fontSize:"13px",fontWeight:600}}>{history[d].focus}</div>
+          <div style={{color:C.muted,fontSize:"11px"}}>{d}</div>
+        </div>
+        <div style={{textAlign:"right"}}>
+          <div style={{color:history[d].pct>=80?C.green:history[d].pct>=60?C.yellow:C.orange,fontSize:"14px",fontWeight:700}}>{history[d].pct}%</div>
+          <div style={{color:C.muted,fontSize:"10px"}}>{getRank(Math.round(history[d].pct/100*25)).rank} Rank</div>
+        </div>
+      </div>))}
+    </div>)}
+  </div>);
+}
+
+// ── TAB 4: DIET (with localStorage) ─────────────────────────
+function Tab4(){
+  const tk=todayKey();
+  const[ckd,setCkd]=useState(()=>lsGet(`diet_${tk}`,{}));
+  const[weight,setWeight]=useState(()=>lsGet("bodyweight",""));
+  const[ai,setAi]=useState("");const[load,setLoad]=useState(false);
+
+  const cm=DIET.filter(d=>ckd[d.meal]);
+  const cal=cm.reduce((a,d)=>a+d.cal,0);
+  const prot=cm.reduce((a,d)=>a+d.protein,0);
+
+  function toggleMeal(meal){
+    const nd={...ckd,[meal]:!ckd[meal]};
+    setCkd(nd);lsSet(`diet_${tk}`,nd);
+    // Save daily calories to history
+    const ch=lsGet("cal_history",{});
+    const nc=DIET.filter(d=>nd[d.meal]).reduce((a,d)=>a+d.cal,0);
+    ch[tk]=nc;lsSet("cal_history",ch);
+  }
+
+  function saveWeight(v){
+    setWeight(v);lsSet("bodyweight",v);
+    const wh=lsGet("weight_history",{});
+    wh[tk]=parseFloat(v);lsSet("weight_history",wh);
+  }
+
+  async function getCoach(){
+    setLoad(true);setAi("");
+    try{
+      const st=DIET.map(d=>`${d.meal}:${ckd[d.meal]?"Done":"Missed"}`).join(", ");
+      const streak=lsGet("streak",0);
+      const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:`You are FitWarrior AI Coach. Punchy motivating daily report (3-4 sentences) for:\n- Meals: ${cm.length}/8\n- Calories: ${cal}/2800 kcal\n- Protein: ${prot}/110g\n- Status: ${st}\n- Streak: ${streak} days\nBe specific energetic. ONE tip for tomorrow. Max 80 words. 1-2 emojis.`}]})});
+      const data=await r.json();
+      setAi(data.content?.[0]?.text||"Solid effort! Stay consistent. 💪");
+    }catch{setAi("Solid effort! Stay consistent and keep pushing. 💪");}
+    setLoad(false);
+  }
+
+  return(<div style={{padding:"16px"}}>
+    <h1 style={{color:C.text,fontSize:"24px",fontWeight:900,marginBottom:"4px"}}>Diet Planner</h1>
+    <p style={{color:C.muted,fontSize:"13px",marginBottom:"16px"}}>Pure Veg · 2800 cal target · 110g protein</p>
+
+    {/* Weight tracker */}
+    <div style={{background:C.card,borderRadius:"14px",padding:"16px",marginBottom:"16px",border:`1px solid ${C.purple}44`,display:"flex",alignItems:"center",gap:"12px"}}>
+      <span style={{fontSize:"28px"}}>⚖️</span>
+      <div style={{flex:1}}>
+        <div style={{color:C.text,fontSize:"14px",fontWeight:700}}>Aaj ka Weight</div>
+        <div style={{color:C.muted,fontSize:"12px"}}>Daily log karo progress track hoga</div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:"6px"}}>
+        <input type="number" placeholder="50" value={weight} onChange={e=>saveWeight(e.target.value)}
+          style={{background:C.card2,border:`1px solid ${C.purple}`,color:C.text,borderRadius:"8px",padding:"8px",width:"64px",fontSize:"16px",textAlign:"center",fontWeight:700}}/>
+        <span style={{color:C.muted,fontSize:"13px"}}>kg</span>
+      </div>
+    </div>
+
+    {/* Macros */}
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px",marginBottom:"16px"}}>
+      {[{label:"Calories",v:cal,t:2800,u:"kcal",c:C.orange},{label:"Protein",v:prot,t:110,u:"g",c:C.cyan}].map((m,i)=>(<div key={i} style={{background:C.card,borderRadius:"14px",padding:"16px",border:`1px solid ${m.c}33`}}>
+        <div style={{color:m.c,fontSize:"24px",fontWeight:900}}>{m.v}</div>
+        <div style={{color:C.muted,fontSize:"12px"}}>/ {m.t} {m.u}</div>
+        <div style={{background:C.border,borderRadius:"4px",height:"4px",marginTop:"8px"}}>
+          <div style={{background:m.c,height:"100%",borderRadius:"4px",width:`${Math.min((m.v/m.t)*100,100)}%`,transition:"width 0.3s"}}/>
+        </div>
+      </div>))}
+    </div>
+
+    {/* Meal list */}
+    {DIET.map((meal,i)=>(<div key={i} onClick={()=>toggleMeal(meal.meal)} style={{background:ckd[meal.meal]?C.green+"12":C.card,border:`1px solid ${ckd[meal.meal]?C.green+"44":C.border}`,borderRadius:"14px",padding:"14px 16px",marginBottom:"10px",cursor:"pointer",transition:"all 0.2s"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+        <div style={{display:"flex",gap:"12px",alignItems:"flex-start"}}>
+          <span style={{fontSize:"22px"}}>{meal.icon}</span>
+          <div>
+            <div style={{color:C.text,fontSize:"15px",fontWeight:700}}>{meal.meal}</div>
+            <div style={{color:C.muted,fontSize:"11px",marginBottom:"4px"}}>{meal.time}</div>
+            {meal.items.map((item,j)=><div key={j} style={{color:C.muted,fontSize:"12px"}}>• {item}</div>)}
+          </div>
+        </div>
+        <div style={{textAlign:"right",flexShrink:0,marginLeft:"8px"}}>
+          <div style={{color:ckd[meal.meal]?C.green:C.border,fontSize:"22px",marginBottom:"4px"}}>{ckd[meal.meal]?"✓":"○"}</div>
+          {meal.cal>0&&<div style={{color:C.orange,fontSize:"12px",fontWeight:700}}>{meal.cal} cal</div>}
+          {meal.protein>0&&<div style={{color:C.cyan,fontSize:"11px"}}>{meal.protein}g</div>}
+          <span style={{background:C.cyan+"22",color:C.cyan,padding:"2px 6px",borderRadius:"8px",fontSize:"10px",fontWeight:700}}>{meal.tag}</span>
+        </div>
+      </div>
+    </div>))}
+
+    {/* AI Coach */}
+    <div style={{background:`linear-gradient(135deg,${C.purple}18,${C.card})`,borderRadius:"16px",padding:"20px",marginTop:"8px",marginBottom:"8px",border:`1px solid ${C.purple}44`}}>
+      <h3 style={{color:C.purple,fontSize:"15px",fontWeight:700,marginBottom:"12px"}}>🤖 AI Coach Report</h3>
+      {ai?<p style={{color:C.text,fontSize:"14px",lineHeight:1.6,margin:"0 0 12px 0"}}>{ai}</p>
+        :<p style={{color:C.muted,fontSize:"13px",margin:"0 0 12px 0"}}>Meals log karo phir AI coach report lo.</p>}
+      <button onClick={getCoach} disabled={load} style={{background:load?C.border:C.purple,color:load?C.muted:"#fff",border:"none",borderRadius:"10px",padding:"12px 20px",cursor:load?"not-allowed":"pointer",fontSize:"14px",fontWeight:700,width:"100%"}}>
+        {load?"Analyzing...":"📊 Get AI Coach Report"}
+      </button>
+    </div>
+  </div>);
+}
+
+// ── MAIN APP ─────────────────────────────────────────────────
+function App(){
+  const[tab,setTab]=useState(0);
+  const tabs=[{icon:"🏛️",label:"Library"},{icon:"💪",label:"Workout"},{icon:"📊",label:"Stats"},{icon:"🥗",label:"Diet"}];
+  return(<div style={{background:C.bg,minHeight:"100vh",maxWidth:"480px",margin:"0 auto",position:"relative",paddingBottom:"80px"}}>
+    <div style={{background:C.bg,borderBottom:`1px solid ${C.border}`,padding:"14px 16px 10px",position:"sticky",top:0,zIndex:10}}>
+      <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
+        <span style={{fontSize:"22px"}}>⚔️</span>
+        <span style={{color:C.cyan,fontSize:"18px",fontWeight:900}}>FitWarrior<span style={{color:C.orange}}>AI</span></span>
+        <span style={{marginLeft:"auto",background:C.cyan+"18",color:C.cyan,padding:"3px 10px",borderRadius:"20px",fontSize:"11px",fontWeight:700}}>WARRIOR</span>
+      </div>
+    </div>
+    {tab===0&&<Tab1/>}
+    {tab===1&&<Tab2/>}
+    {tab===2&&<Tab3/>}
+    {tab===3&&<Tab4/>}
+    <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:"480px",background:C.card,borderTop:`1px solid ${C.border}`,display:"flex",zIndex:20}}>
+      {tabs.map((t,i)=>(<button key={i} onClick={()=>setTab(i)} style={{flex:1,background:"none",border:"none",padding:"10px 0 8px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}>
+        <span style={{fontSize:"20px"}}>{t.icon}</span>
+        <span style={{fontSize:"10px",fontWeight:tab===i?700:500,color:tab===i?C.cyan:C.muted}}>{t.label}</span>
+        {tab===i&&<div style={{width:"20px",height:"2px",background:C.cyan,borderRadius:"2px"}}/>}
+      </button>))}
+    </div>
+  </div>);
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+
+<script>
+// PWA Install
+let dp;
+window.addEventListener("beforeinstallprompt",e=>{
+  e.preventDefault();dp=e;
+  const b=document.createElement("div");
+  b.innerHTML=`<div style="position:fixed;bottom:90px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:448px;background:#1a1a2e;border:1px solid #00E5FF44;border-radius:14px;padding:14px 16px;z-index:100;display:flex;align-items:center;gap:12px;">
+    <span style="font-size:32px">⚔️</span>
+    <div style="flex:1"><div style="color:#E8E8F0;font-size:14px;font-weight:700">FitWarrior AI</div><div style="color:#6B6B82;font-size:12px">Install on home screen</div></div>
+    <button id="ib" style="background:#00E5FF;color:#08080E;border:none;border-radius:8px;padding:8px 16px;font-weight:700;font-size:13px;cursor:pointer">Install</button>
+    <button id="cb" style="background:none;border:none;color:#6B6B82;font-size:18px;cursor:pointer">✕</button>
+  </div>`;
+  setTimeout(()=>{document.body.appendChild(b);
+    document.getElementById("ib").onclick=async()=>{dp.prompt();await dp.userChoice;dp=null;b.remove();};
+    document.getElementById("cb").onclick=()=>b.remove();
+  },3000);
+});
+if("serviceWorker" in navigator){
+  const sw=`self.addEventListener("install",e=>{self.skipWaiting();});self.addEventListener("activate",e=>{self.clients.claim();});self.addEventListener("fetch",e=>{if(e.request.method!=="GET")return;e.respondWith(fetch(e.request).catch(()=>new Response("Offline")));});`;
+  navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:"application/javascript"})),{scope:"./"}).catch(()=>{});
+}
+</script>
+</body>
+</html>
